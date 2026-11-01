@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PaperTrail</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f3f6fb;
+        color: #172033;
+      }
+      header {
+        background: #172554;
+        color: white;
+        padding: 25px 8%;
+      }
+      main {
+        max-width: 850px;
+        margin: 35px auto;
+        padding: 0 20px;
+      }
+      .box,
+      .paper {
+        background: white;
+        padding: 24px;
+        margin-bottom: 20px;
+        border-radius: 12px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 14px;
+        margin: 12px 0;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        border: 0;
+        padding: 13px 20px;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+      .muted {
+        color: #64748b;
+        line-height: 1.6;
+      }
+      a {
+        color: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>📚 PaperTrail</h1>
+      <p>Explore research. Discover what comes next.</p>
+    </header>
+
+    <main>
+      <section class="box">
+        <h2>Research Explorer</h2>
+        <p class="muted">Find research and explore its contributions.</p>
+        <input id="topic" placeholder="Enter a topic, e.g. crowd monitoring" />
+        <button onclick="searchAcademicPapers()">Search Academic Papers</button>
+      </section>
+      <section id="results"></section>
+    </main>
+
+    <script>
+      async function searchPapers() {
+        const topic = document.getElementById("topic").value.trim();
+        const results = document.getElementById("results");
+
+        if (!topic) {
+          alert("Please enter a research topic.");
+          return;
+        }
+
+        results.innerHTML = '<div class="paper">Searching...</div>';
+
+        try {
+          const response = await fetch(`http://localhost:3001/api/search?topic=${encodeURIComponent(topic)}`);
+          console.log("Response status:", response.status);
+          console.log("Response type:", response.headers.get("content-type"));
+          const data = await response.json();
+
+          if (!response.ok) throw new Error(JSON.stringify(data));
+
+          if (!data.results || !data.results.length) {
+            results.innerHTML = '<div class="paper">No results found.</div>';
+            return;
+          }
+
+          results.innerHTML = data.results
+            .map(
+              (p) => `
+                    <article class="paper">
+                        <h3>${escapeHTML(p.title || "Untitled")}</h3>
+                        <p class="muted">${escapeHTML(p.snippet || "No description available.")}</p>
+                        <a href="${safeURL(p.url)}" target="_blank" rel="noopener noreferrer">Open result ↗</a>
+                    </article>
+                `,
+            )
+            .join("");
+        } catch (error) {
+          results.innerHTML = `<div class="paper">Search failed: ${escapeHTML(error.message)}. Check that the backend is running on port 3001.</div>`;
+        }
+      }
+
+      function escapeHTML(value) {
+        return String(value).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      function safeURL(value) {
+        try {
+          const url = new URL(value);
+          return ["https:", "http:"].includes(url.protocol)
+            ? escapeHTML(url.href)
+            : "#";
+        } catch {
+          return "#";
+        }
+      }
+
+      async function searchAcademicPapers() {
+            const topic = document.getElementById("topic").value.trim();
+            const results = document.getElementById("results");
+
+            if (!topic) {
+                alert("Please enter a research topic.");
+                return;
+            }
+        
+            results.innerHTML = '<div class="paper">Searching academic papers...</div>';
+        
+            try {
+                const response = await fetch(
+                    `http://localhost:3001/api/papers?topic=${encodeURIComponent(topic)}`
+                );
+            
+                const data = await response.json();
+            
+                if (!response.ok) {
+                    throw new Error(data.error || "Unable to fetch academic papers.");
+                }
+            
+                if (!data.results || data.results.length === 0) {
+                    results.innerHTML = '<div class="paper">No academic papers found.</div>';
+                    return;
+                }
+            
+                results.innerHTML = data.results.map(p => `
+                    <article class="paper">
+                        <h3>${escapeHTML(p.title)}</h3>
+                    
+                        <p class="muted">
+                            <strong>Authors:</strong> ${escapeHTML(p.authors)}<br>
+                            <strong>Year:</strong> ${escapeHTML(String(p.year))}<br>
+                            <strong>Citations:</strong> ${escapeHTML(String(p.citations))}
+                        </p>
+                    
+                        <p>
+                            <strong>Access:</strong>
+                            ${p.isOpenAccess ? "Open Access" : "Access may be restricted"}
+                        </p>
+                    
+                        <a href="${safeURL(p.url)}" target="_blank" rel="noopener noreferrer">
+                            View Paper ↗
+                        </a>
+                    
+                        ${p.pdf ? `
+                            &nbsp;|&nbsp;
+                            <a href="${safeURL(p.pdf)}" target="_blank" rel="noopener noreferrer">
+                                Read PDF / Full Text ↗
+                            </a>
+                        ` : ""}
+                    </article>
+                `).join("");
+                
+            } catch (error) {
+                results.innerHTML = `
+                    <div class="paper">
+                        Academic search failed: ${escapeHTML(error.message)}
+                        <p class="muted">Check that your backend is running on port 3001.</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+  </body>
+</html>
